@@ -4,9 +4,8 @@
 //
 //  Created by borute on 10/15/19.
 //
-
-//#include "hw2_server.h"
-#include "unp.h"
+//#include "unp.h"
+#include "unpv13e/lib/unp.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -401,13 +400,26 @@ int main(int argc, char* argv[]){
                                     break;
                                 }
                                 //printf("The message will be forwarded to: %s\n\n", next_name);
+                                int count_space = 0;
+                                for (int pos = 0; pos < strlen(buffer); pos++)
+                                {
+                                    if (buffer[pos] == ' ') {count_space++;}
+                                    if (count_space == 4)
+                                    {
+                                        pos++;
+                                        buffer[pos] = buffer[pos] + 1;
+                                        break;
+                                    }
+                                }
+                                strcat(buffer, " ");
+                                strcat(buffer, bs -> name);
+                                printf("%s\n", buffer);
                                 arguments[2] = next_name;
                                 arguments[5 + atoi(arguments[4])] = calloc(strlen(bs -> name) + 1, sizeof(char));
                                 sprintf(arguments[5 + atoi(arguments[4])], "%s", bs -> name);
                                 int hopCount = atoi(arguments[4]);
                                 arguments[4] = calloc(10, sizeof(char));
                                 sprintf(arguments[4], "%d", hopCount + 1);
-                                //printf("?\n");
                             }
                         }
                     }
