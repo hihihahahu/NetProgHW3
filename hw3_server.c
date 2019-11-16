@@ -6,7 +6,7 @@
 //
 
 //#include "hw2_server.h"
-#include "unpv13e/lib/unp.h"
+#include "unp.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <ctype.h>
@@ -92,6 +92,7 @@ int main(int argc, char* argv[]){
         bs_count++;
     }
     
+    /*
     printf("Checking stations...\n\n");
     for(int a = 0; a < bs_count; a++){
         struct BaseStation* bs = baseStations[a];
@@ -102,6 +103,7 @@ int main(int argc, char* argv[]){
         printf("\n");
     }
     printf("Station check done!\n\n");
+    */
     
     //bind socket to server
     
@@ -137,7 +139,7 @@ int main(int argc, char* argv[]){
         
         if (FD_ISSET(listenfd, &fds))
         {
-            printf("New client!\n");
+            //printf("New client!\n");
             socklen_t len = sizeof(cliaddr);
             connfd = accept(listenfd, (struct sockaddr*)&cliaddr, &len);
             clientFDs[sensor_count] = connfd;
@@ -149,7 +151,9 @@ int main(int argc, char* argv[]){
         
         //stdin
         if (FD_ISSET(0, &fds)){
-            
+            char aaa[25];
+            scanf("%s", aaa);
+            break;
         }
         
         //receives message/requests from client
@@ -157,7 +161,7 @@ int main(int argc, char* argv[]){
             if(FD_ISSET(clientFDs[client], &fds)){
                 int bytes_read = read(clientFDs[client], buffer, sizeof(buffer));
                 buffer[bytes_read] = '\0';
-                printf("\nMessage received: %s\n", buffer);
+                //printf("\nMessage received: %s\n", buffer);
                 
                 char** arguments = parseMessage(buffer);
                 
@@ -217,19 +221,21 @@ int main(int argc, char* argv[]){
                     sprintf(response, "REACHABLE %d %s", reachable_count, reachables);
                     response[strlen(response) - 1] = '\0';
                     
-                    printf("response to %s: %s\n\n", arguments[1], response);
+                    //printf("response to %s: %s\n\n", arguments[1], response);
                     
                     
                     if(send(clientFDs[client], response, strlen(response), 0) == -1){
                         printf("send error (REACHABLE)\n");
                     }
                     
+                    /*
                     printf("Updated list of sensors: \n");
                     
                     for(int a = 0; a < sensor_count; a++){
                         printf("ID: %s, range: %d, Xpos: %d, Ypos: %d\n", sensors[a] -> name, sensors[a] -> range, sensors[a] -> x_pos, sensors[a] -> y_pos);
                     }
                     printf("\n");
+                    */
                 }
                 
                 if(strcmp(arguments[0], "WHERE") == 0){
@@ -257,17 +263,19 @@ int main(int argc, char* argv[]){
                     }
                     
                     
-                    printf("response: %s\n\n", response);
+                    //printf("response: %s\n\n", response);
                 }
                 if(strcmp(arguments[0], "DATAMESSAGE") == 0){
                     //will break out of the loop when a message is sent to a sensor or reaches a deadend
                     while(1){
+                        /*
                         printf("\ndatamsg: ");
                         for(int a = 0; a <= atoi(arguments[4]) + 4; a++){
                             printf("%s ", arguments[a]);
                         }
                         printf("\n\n");
                         //printf("gg1\n");
+                        */
                         
                         bool is_base = false;
                         bool is_sensor = false;
@@ -302,7 +310,7 @@ int main(int argc, char* argv[]){
                             float bs_x = (float)bs -> x_pos;
                             float bs_y = (float)bs -> y_pos;
                             if(strcmp(arguments[3], bs -> name) == 0){
-                                printf("%s: Message from %s to %s succesfully received.\n", bs -> name, arguments[1], arguments[3]);
+                                printf("%s: Message from %s to %s successfully received.\n", bs -> name, arguments[1], arguments[3]);
                                 break;
                             }
                             else{
@@ -383,8 +391,8 @@ int main(int argc, char* argv[]){
                                     printf("%s: Message from %s to %s could not be delivered.\n", bs -> name, arguments[1], arguments[3]);
                                     break;
                                 }
-                                printf("The message will be forwarded to: %s\n\n", next_name);
-                                printf("%s: Message from %s to %s being forwarded through %s.\n", bs -> name, arguments[1], arguments[3], arguments[2]);
+                                //printf("The message will be forwarded to: %s\n\n", next_name);
+                                printf("%s: Message from %s to %s being forwarded through %s\n", bs -> name, arguments[1], arguments[3], arguments[2]);
                                 arguments[2] = next_name;
                                 arguments[5 + atoi(arguments[4])] = calloc(strlen(bs -> name) + 1, sizeof(char));
                                 sprintf(arguments[5 + atoi(arguments[4])], "%s", bs -> name);
@@ -400,6 +408,11 @@ int main(int argc, char* argv[]){
             }
         }
     }
+    for(int client = 0; client < sensor_count; client++)
+    {
+        close(clientFDs[client]);
+    }
+    close(listenfd);
     return 1;
 }
 

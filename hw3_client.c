@@ -5,7 +5,7 @@
 //  Created by borute on 10/15/19.
 //
 
-#include "unpv13e/lib/unp.h"
+#include "unp.h"
 #include <stdio.h>
 #include <math.h>
 
@@ -159,10 +159,12 @@ void senddata(int sockfd, char* buffer)
 
     qsort(s_list, s_num, sizeof(struct station), cmpfunc);
 
+    /*
     for (int i = 0; i < s_num; i++)
     {
         printf("%s %f\n", s_list[i].id, s_list[i].dist);
     }
+    */
     bzero(datamsg, 200);
     sprintf(datamsg, "DATAMESSAGE %s %s %s 1 %s", sensor_id, s_list[0].id, dest_id, sensor_id);
     send(sockfd, datamsg, strlen(datamsg), 0);
@@ -185,7 +187,7 @@ void do_data(int sockfd, char* buffer)
     //If this sensor is destination
     if (strcmp(dest_id, sensor_id) == 0)
     {
-        printf("%s: Message from %s to %s succesfully received.\n", sensor_id, origin_id, sensor_id);
+        printf("%s: Message from %s to %s successfully received.\n", sensor_id, origin_id, sensor_id);
         return;
     }
 
@@ -226,7 +228,7 @@ void do_data(int sockfd, char* buffer)
             strcat(datamsg, " ");
             strcat(datamsg, sensor_id);
             send(sockfd, datamsg, strlen(datamsg), 0);
-            printf("%s: Message from %s to %s being forwarded through %s.\n", sensor_id, origin_id, dest_id, sensor_id);
+            printf("%s: Message from %s to %s being forwarded through %s\n", sensor_id, origin_id, dest_id, sensor_id);
             return;
         }
     }
@@ -262,10 +264,13 @@ void do_data(int sockfd, char* buffer)
 
     qsort(s_list, s_num, sizeof(struct station), cmpfunc);
 
+    /*
     for (int i = 0; i < s_num; i++)
     {
         printf("%s %f\n", s_list[i].id, s_list[i].dist);
     }
+    */
+
     bzero(datamsg, 200);
     sprintf(datamsg, "DATAMESSAGE %s %s %s %d", origin_id, s_list[0].id, dest_id, hop_len + 1);
     for (int i = 0; i < hop_len; i++)
@@ -276,7 +281,7 @@ void do_data(int sockfd, char* buffer)
     strcat(datamsg, " ");
     strcat(datamsg, sensor_id);
     send(sockfd, datamsg, strlen(datamsg), 0);
-    printf("%s: Message from %s to %s being forwarded through %s.\n", sensor_id, origin_id, dest_id, sensor_id);
+    printf("%s: Message from %s to %s being forwarded through %s\n", sensor_id, origin_id, dest_id, sensor_id);
     return;
 }
 
@@ -286,6 +291,35 @@ int main(int argc, char* argv[]){
         fprintf(stderr, "invalid command line\n");
         exit(1);
     }
+
+    struct addrinfo* results;
+    char ip_addr[256];
+    
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    
+    /*
+        IPv4 addresses
+    */
+    
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    
+    //char* error = calloc(128, sizeof(char));
+    
+    int error = getaddrinfo(argv[1], NULL, &hints, &results);
+    
+    if(error){
+        fprintf(stderr, "getaddrinfo() failed: %s\n", gai_strerror(error));
+        return 0;
+    }
+    
+    struct addrinfo* result = results;
+    //struct addrinfo* temp = results;
+    
+    bzero(ip_addr, 256);
+    getnameinfo(result -> ai_addr, result -> ai_addrlen, ip_addr, sizeof(ip_addr), NULL, 0, NI_NUMERICHOST);
+
     int sockfd;
     struct sockaddr_in servaddr;
     //int addrlen;
@@ -300,7 +334,7 @@ int main(int argc, char* argv[]){
     
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(port);
-    servaddr.sin_addr.s_addr = inet_addr(argv[1]);
+    servaddr.sin_addr.s_addr = inet_addr(ip_addr);
 
     sensor_id = argv[3];
     range = atoi(argv[4]);
