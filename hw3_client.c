@@ -317,7 +317,7 @@ int main(int argc, char* argv[]){
     fd_set fds;
     char update[200] = {0};
     //Send UPDATEPOSITION
-    sprintf(update, "UPDATEPOSITION %s %d %f %f", sensor_id, range, x_pos, y_pos);
+    sprintf(update, "UPDATEPOSITION %s %d %d %d", sensor_id, range, (int)x_pos, (int)y_pos);
     send(sockfd, update, strlen(update), 0);
 
     //Get list of station reachable
