@@ -380,19 +380,27 @@ int main(int argc, char* argv[]){
                                     if(skip){
                                         continue;
                                     }
-                                    if(dists[a] < shortest_dist){
+                                    
+                                    //tie
+                                    if(fabs(dists[a] - shortest_dist) < FLT_EPSILON){
+                                        if(strcmp(next[a], next_name) < 0){
+                                            next_name = next[a];
+                                            shortest_dist = dists[a];
+                                        }
+                                    }
+                                    else if(dists[a] < shortest_dist){
                                         //printf("!\n");
                                         dead = false;
                                         shortest_dist = dists[a];
                                         next_name = next[a];
                                     }
                                 }
+                                printf("%s: Message from %s to %s being forwarded through %s\n", bs -> name, arguments[1], arguments[3], arguments[2]);
                                 if(dead){
                                     printf("%s: Message from %s to %s could not be delivered.\n", bs -> name, arguments[1], arguments[3]);
                                     break;
                                 }
                                 //printf("The message will be forwarded to: %s\n\n", next_name);
-                                printf("%s: Message from %s to %s being forwarded through %s\n", bs -> name, arguments[1], arguments[3], arguments[2]);
                                 arguments[2] = next_name;
                                 arguments[5 + atoi(arguments[4])] = calloc(strlen(bs -> name) + 1, sizeof(char));
                                 sprintf(arguments[5 + atoi(arguments[4])], "%s", bs -> name);
