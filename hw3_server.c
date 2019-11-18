@@ -47,6 +47,7 @@ int main(int argc, char* argv[]){
     
     //create socket
     
+    //setting up default sensors
     int bs_count = 0;
     int sensor_count = 0;
     struct BaseStation** baseStations = calloc(32, sizeof(struct BaseStation*));
@@ -164,8 +165,11 @@ int main(int argc, char* argv[]){
                 
                 char** arguments = parseMessage(buffer);
                 
+                //update position request
                 if(strcmp(arguments[0], "UPDATEPOSITION") == 0){
                     bool updated = false;
+                    //update an existing sensor's location,
+                    //if this request comes from any existing sensors
                     for(int a = 0; a < sensor_count; a++){
                         if(strcmp(sensors[a] -> name, arguments[1]) == 0){
                             updated = true;
@@ -175,6 +179,7 @@ int main(int argc, char* argv[]){
                             break;
                         }
                     }
+                    //otherwise add it to the list of sensors
                     if(!updated){
                         for(int a = 0; a < sensor_count; a++){
                             if(strcmp(sensors[a] -> name, "undef") == 0){
@@ -190,6 +195,8 @@ int main(int argc, char* argv[]){
                             }
                         }
                     }
+                    //now we're searching for the reachable sensors and stations for the sensor
+                    //that updated its own position
                     float current_x = (float)atoi(arguments[3]);
                     float current_y = (float)atoi(arguments[4]);
                     int reachable_count = 0;
@@ -217,12 +224,12 @@ int main(int argc, char* argv[]){
                         }
                     }
                     
+                
                     sprintf(response, "REACHABLE %d %s", reachable_count, reachables);
                     response[strlen(response) - 1] = '\0';
                     
-                    //printf("response to %s: %s\n\n", arguments[1], response);
                     
-                    
+                    //send the results
                     if(send(clientFDs[client], response, strlen(response), 0) == -1){
                         printf("send error (REACHABLE)\n");
                     }
@@ -237,9 +244,11 @@ int main(int argc, char* argv[]){
                     */
                 }
                 
+                //sensor asking where someone is
                 if(strcmp(arguments[0], "WHERE") == 0){
                     bool responded = false;
                     char response[512];
+                    //asking for a station's location
                     for(int a = 0; a < bs_count; a++){
                         if(strcmp(baseStations[a] -> name, arguments[1]) == 0){
                             sprintf(response, "THERE %s %d %d", baseStations[a] -> name, baseStations[a] -> x_pos, baseStations[a] -> y_pos);
@@ -247,6 +256,8 @@ int main(int argc, char* argv[]){
                             break;
                         }
                     }
+                    
+                    //asking for a sensor's location
                     if(!responded){
                         for(int a = 0; a < sensor_count; a++){
                             if(strcmp(sensors[a] -> name, arguments[1]) == 0){
@@ -256,7 +267,7 @@ int main(int argc, char* argv[]){
                             }
                         }
                     }
-                    
+                     //error
                     if(send(clientFDs[client], response, strlen(response), 0) == -1){
                         printf("send error(THERE)\n");
                     }
@@ -264,6 +275,8 @@ int main(int argc, char* argv[]){
                     
                     //printf("response: %s\n\n", response);
                 }
+                
+                //message received
                 if(strcmp(arguments[0], "DATAMESSAGE") == 0){
                     //will break out of the loop when a message is sent to a sensor or reaches a deadend
                     while(1){
@@ -280,6 +293,8 @@ int main(int argc, char* argv[]){
                         bool is_sensor = false;
                         int targetFD = -1;
                         struct BaseStation* bs;
+                        
+                        //check if the recipient is a base station
                         for(int a = 0; a < bs_count; a++){
                             //printf("gg2\n");
 
@@ -290,6 +305,7 @@ int main(int argc, char* argv[]){
                                 break;
                             }
                         }
+                        //then it's a sensor
                         if(!is_base){
                             for(int a = 0; a < sensor_count; a++){
                                 if(strcmp(sensors[a] -> name, arguments[2]) == 0){
@@ -299,19 +315,27 @@ int main(int argc, char* argv[]){
                                 }
                             }
                         }
+                        
+                        //forward the message to the sensor, and break out of the loop
                         if(is_sensor){
                             if(send(targetFD, buffer, strlen(buffer), 0) == -1){
                                 printf("send error(DATAMESSAGE)\n");
                             }
                             break;
                         }
+                        
+                        //otherwise forward the message to a station
                         else if(is_base){
                             float bs_x = (float)bs -> x_pos;
                             float bs_y = (float)bs -> y_pos;
+                            
+                            //if the station that receives the message is the destination, then break
                             if(strcmp(arguments[3], bs -> name) == 0){
                                 printf("%s: Message from %s to %s successfully received.\n", bs -> name, arguments[1], arguments[3]);
                                 break;
                             }
+                            
+                            //otherwise it would be forwarded
                             else{
                                 bool dest_found = false;
                                 //find the position of the destination
@@ -366,6 +390,7 @@ int main(int argc, char* argv[]){
                                 float shortest_dist = FLT_MAX;
                                 char* next_name;
                                 bool dead = true;
+                                
                                 //find the next nearest available node
                                 for(int a = 0; a < next_index; a++){
                                     bool skip = false;
@@ -394,12 +419,17 @@ int main(int argc, char* argv[]){
                                         next_name = next[a];
                                     }
                                 }
+                                
                                 printf("%s: Message from %s to %s being forwarded through %s\n", bs -> name, arguments[1], arguments[3], arguments[2]);
+                                
+                                //if we didn't find anywhere for the message to be forwarded,
+                                //we've come to a dead end, break
                                 if(dead){
                                     printf("%s: Message from %s to %s could not be delivered.\n", bs -> name, arguments[1], arguments[3]);
                                     break;
                                 }
-                                //printf("The message will be forwarded to: %s\n\n", next_name);
+                                
+                                //or go ahead and forward it
                                 int count_space = 0;
                                 for (int pos = 0; pos < strlen(buffer); pos++)
                                 {
@@ -411,9 +441,12 @@ int main(int argc, char* argv[]){
                                         break;
                                     }
                                 }
+                                
+                                //add the current base station to HopList
                                 strcat(buffer, " ");
                                 strcat(buffer, bs -> name);
                                 printf("%s\n", buffer);
+                                
                                 arguments[2] = next_name;
                                 arguments[5 + atoi(arguments[4])] = calloc(strlen(bs -> name) + 1, sizeof(char));
                                 sprintf(arguments[5 + atoi(arguments[4])], "%s", bs -> name);
@@ -423,11 +456,12 @@ int main(int argc, char* argv[]){
                             }
                         }
                     }
-                    
                 }
             }
         }
     }
+    
+    //close connections
     for(int client = 0; client < sensor_count; client++)
     {
         close(clientFDs[client]);
